@@ -7,10 +7,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Setup Java 17
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
+
+    - name: Kunci Versi Gradle di 8.2 (Fix Error!)
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: '8.2'
 
     - name: Sulap Kode Otomatis (Membuat File Android)
       run: |
@@ -18,22 +23,11 @@ jobs:
         mkdir -p app/src/main/res/layout
         mkdir -p app/src/main/res/values
         mkdir -p app/src/main/res/mipmap-xxxhdpi
-        mkdir -p gradle/wrapper
         
-        # 1. Paksa gunakan Gradle 8.2 (Ini yang memperbaiki Error sebelumnya!)
-        cat << 'EOF' > gradle/wrapper/gradle-wrapper.properties
-        distributionBase=GRADLE_USER_HOME
-        distributionPath=wrapper/dists
-        distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip
-        networkTimeout=10000
-        zipStoreBase=GRADLE_USER_HOME
-        zipStorePath=wrapper/dists
-        EOF
-
-        # 2. Download Logo
+        # Download Logo
         wget -O app/src/main/res/mipmap-xxxhdpi/ic_launcher.png "https://cdn-icons-png.flaticon.com/512/833/833281.png"
 
-        # 3. Settings Gradle (Format Baru)
+        # Settings Gradle
         cat << 'EOF' > settings.gradle
         pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
         dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
@@ -41,7 +35,7 @@ jobs:
         include ':app'
         EOF
 
-        # 4. Project build.gradle (Format Baru)
+        # Project build.gradle
         cat << 'EOF' > build.gradle
         plugins {
             id 'com.android.application' version '8.1.0' apply false
@@ -49,7 +43,7 @@ jobs:
         }
         EOF
 
-        # 5. App build.gradle
+        # App build.gradle (Ditambah config Java 17)
         cat << 'EOF' > app/build.gradle
         plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
         android {
@@ -62,6 +56,13 @@ jobs:
                 versionCode 1
                 versionName "1.0"
             }
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+            kotlinOptions {
+                jvmTarget = '17'
+            }
         }
         dependencies {
             implementation 'androidx.core:core-ktx:1.12.0'
@@ -71,7 +72,7 @@ jobs:
         }
         EOF
 
-        # 6. AndroidManifest.xml
+        # AndroidManifest.xml
         cat << 'EOF' > app/src/main/AndroidManifest.xml
         <?xml version="1.0" encoding="utf-8"?>
         <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -91,7 +92,7 @@ jobs:
         </manifest>
         EOF
 
-        # 7. Tema (Transparan)
+        # Tema (Transparan)
         cat << 'EOF' > app/src/main/res/values/themes.xml
         <resources>
             <style name="Theme.MyTVLauncher" parent="Theme.AppCompat.Light.NoActionBar">
@@ -101,11 +102,11 @@ jobs:
         </resources>
         EOF
 
-        # 8. Layout Utama
+        # Layout Utama
         cat << 'EOF' > app/src/main/res/layout/activity_main.xml
         <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:layout_marginTop="20dp" android:layout_marginBottom="20dp">
-                <androidx.cardview.widget.CardView android:id="@+id/btnTv" android:layout_width="120dp" android:layout_height="60dp" app:cardBackgroundColor="#FF0000" app:cardCornerRadius="12dp" android:layout_marginEnd="10dp"><TextView android:layout_width="match_parent" android:layout_height="match_parent" android:text="📺 LIVE TV" android:gravity="center" android:textColor="#FFF" android:textStyle="bold"/></androidx.cardview.widget.CardView>
+                <androidx.cardview.widget.CardView android:id="@+id/btnTv" android:layout_width="120dp" android:layout_height="60dp" app:cardBackgroundColor="#E91E63" app:cardCornerRadius="12dp" android:layout_marginEnd="10dp"><TextView android:layout_width="match_parent" android:layout_height="match_parent" android:text="📺 LIVE TV" android:gravity="center" android:textColor="#FFF" android:textStyle="bold"/></androidx.cardview.widget.CardView>
                 <androidx.cardview.widget.CardView android:id="@+id/btnWall" android:layout_width="120dp" android:layout_height="60dp" app:cardBackgroundColor="#2196F3" app:cardCornerRadius="12dp" android:layout_marginEnd="10dp"><TextView android:layout_width="match_parent" android:layout_height="match_parent" android:text="🖼️ WALLPAPER" android:gravity="center" android:textColor="#FFF" android:textStyle="bold"/></androidx.cardview.widget.CardView>
                 <androidx.cardview.widget.CardView android:id="@+id/btnAddApp" android:layout_width="120dp" android:layout_height="60dp" app:cardBackgroundColor="#4CAF50" app:cardCornerRadius="12dp"><TextView android:layout_width="match_parent" android:layout_height="match_parent" android:text="➕ TAMBAH APP" android:gravity="center" android:textColor="#FFF" android:textStyle="bold"/></androidx.cardview.widget.CardView>
             </LinearLayout>
@@ -113,14 +114,14 @@ jobs:
         </LinearLayout>
         EOF
 
-        # 9. Layout TV
+        # Layout TV
         cat << 'EOF' > app/src/main/res/layout/activity_tv.xml
         <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000">
             <VideoView android:id="@+id/videoView" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_centerInParent="true"/>
         </RelativeLayout>
         EOF
 
-        # 10. Kode Utama (MainActivity.kt)
+        # Kode Utama (MainActivity.kt)
         cat << 'EOF' > app/src/main/java/com/tv/launcher/MainActivity.kt
         package com.tv.launcher
         import android.content.Intent
@@ -172,6 +173,7 @@ jobs:
                     h.text.text = apps[i].name
                     h.text.setTextColor(android.graphics.Color.WHITE)
                     h.text.gravity = Gravity.CENTER
+                    h.text.setSingleLine(true)
                     h.icon.setImageDrawable(apps[i].icon)
                     h.itemView.setOnClickListener { startActivity(packageManager.getLaunchIntentForPackage(apps[i].pkg)) }
                 }
@@ -181,7 +183,7 @@ jobs:
         }
         EOF
 
-        # 11. Kode TV (TvActivity.kt)
+        # Kode TV (TvActivity.kt)
         cat << 'EOF' > app/src/main/java/com/tv/launcher/TvActivity.kt
         package com.tv.launcher
         import android.net.Uri
@@ -203,13 +205,10 @@ jobs:
         }
         EOF
 
-    - name: Setup Gradle Sistem
-      uses: gradle/actions/setup-gradle@v3
-
-    - name: Mulai Merakit APK (Pasti Berhasil)
+    - name: Mulai Merakit APK 🚀
       run: gradle assembleDebug
 
-    - name: Upload APK Launcher
+    - name: Upload APK Launcher (Selesai!)
       uses: actions/upload-artifact@v4
       with:
         name: TV-Launcher-Ajaib-APK
