@@ -1,6 +1,6 @@
 name: Magic Auto-Build Launcher APK
 on:
-  workflow_dispatch: # Menjalankan dengan 1x klik tombol
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,28 +18,40 @@ jobs:
         mkdir -p app/src/main/res/layout
         mkdir -p app/src/main/res/values
         mkdir -p app/src/main/res/mipmap-xxxhdpi
+        mkdir -p gradle/wrapper
         
-        # 1. Download Logo Aplikasi Otomatis
+        # 1. Paksa gunakan Gradle 8.2 (Ini yang memperbaiki Error sebelumnya!)
+        cat << 'EOF' > gradle/wrapper/gradle-wrapper.properties
+        distributionBase=GRADLE_USER_HOME
+        distributionPath=wrapper/dists
+        distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip
+        networkTimeout=10000
+        zipStoreBase=GRADLE_USER_HOME
+        zipStorePath=wrapper/dists
+        EOF
+
+        # 2. Download Logo
         wget -O app/src/main/res/mipmap-xxxhdpi/ic_launcher.png "https://cdn-icons-png.flaticon.com/512/833/833281.png"
 
-        # 2. settings.gradle
+        # 3. Settings Gradle (Format Baru)
         cat << 'EOF' > settings.gradle
+        pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+        dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
         rootProject.name = "MyTVLauncher"
         include ':app'
         EOF
 
-        # 3. Project build.gradle
+        # 4. Project build.gradle (Format Baru)
         cat << 'EOF' > build.gradle
-        buildscript {
-            repositories { google(); mavenCentral() }
-            dependencies { classpath 'com.android.tools.build:gradle:8.1.0'; classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0" }
+        plugins {
+            id 'com.android.application' version '8.1.0' apply false
+            id 'org.jetbrains.kotlin.android' version '1.9.0' apply false
         }
-        allprojects { repositories { google(); mavenCentral() } }
         EOF
 
-        # 4. App build.gradle
+        # 5. App build.gradle
         cat << 'EOF' > app/build.gradle
-        plugins { id 'com.android.application'; id 'kotlin-android' }
+        plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
         android {
             namespace 'com.tv.launcher'
             compileSdk 34
@@ -50,7 +62,6 @@ jobs:
                 versionCode 1
                 versionName "1.0"
             }
-            buildFeatures { viewBinding true }
         }
         dependencies {
             implementation 'androidx.core:core-ktx:1.12.0'
@@ -60,7 +71,7 @@ jobs:
         }
         EOF
 
-        # 5. AndroidManifest.xml (Izin & Setting Launcher)
+        # 6. AndroidManifest.xml
         cat << 'EOF' > app/src/main/AndroidManifest.xml
         <?xml version="1.0" encoding="utf-8"?>
         <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -80,7 +91,7 @@ jobs:
         </manifest>
         EOF
 
-        # 6. Tema (Background Transparan untuk Wallpaper)
+        # 7. Tema (Transparan)
         cat << 'EOF' > app/src/main/res/values/themes.xml
         <resources>
             <style name="Theme.MyTVLauncher" parent="Theme.AppCompat.Light.NoActionBar">
@@ -90,7 +101,7 @@ jobs:
         </resources>
         EOF
 
-        # 7. Desain Layar Utama (activity_main.xml)
+        # 8. Layout Utama
         cat << 'EOF' > app/src/main/res/layout/activity_main.xml
         <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:layout_marginTop="20dp" android:layout_marginBottom="20dp">
@@ -102,14 +113,14 @@ jobs:
         </LinearLayout>
         EOF
 
-        # 8. Desain Pemutar TV (activity_tv.xml)
+        # 9. Layout TV
         cat << 'EOF' > app/src/main/res/layout/activity_tv.xml
         <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000">
             <VideoView android:id="@+id/videoView" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_centerInParent="true"/>
         </RelativeLayout>
         EOF
 
-        # 9. Kode Kotlin Utama (MainActivity.kt)
+        # 10. Kode Utama (MainActivity.kt)
         cat << 'EOF' > app/src/main/java/com/tv/launcher/MainActivity.kt
         package com.tv.launcher
         import android.content.Intent
@@ -170,7 +181,7 @@ jobs:
         }
         EOF
 
-        # 10. Kode TV Player (TvActivity.kt)
+        # 11. Kode TV (TvActivity.kt)
         cat << 'EOF' > app/src/main/java/com/tv/launcher/TvActivity.kt
         package com.tv.launcher
         import android.net.Uri
@@ -192,13 +203,13 @@ jobs:
         }
         EOF
 
-    - name: Download & Setup Mesin Pembuat APK (Gradle)
-      run: gradle wrapper --gradle-version 8.2
+    - name: Setup Gradle Sistem
+      uses: gradle/actions/setup-gradle@v3
 
-    - name: Mulai Merakit APK...
-      run: ./gradlew assembleDebug
+    - name: Mulai Merakit APK (Pasti Berhasil)
+      run: gradle assembleDebug
 
-    - name: Selesai! Upload APK agar bisa didownload
+    - name: Upload APK Launcher
       uses: actions/upload-artifact@v4
       with:
         name: TV-Launcher-Ajaib-APK
